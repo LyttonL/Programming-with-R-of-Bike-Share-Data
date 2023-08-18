@@ -1,0 +1,181 @@
+---
+title: "BikeShareData"
+date: "2023-07-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+suppressPackageStartupMessages(library(dplyr))
+library(tidyr)
+```
+
+## R Markdown
+
+```{r}
+ny = read.csv('new_york_city.csv')
+wash = read.csv('washington.csv')
+chi = read.csv('chicago.csv')
+```
+
+## Question 1
+## The distribution of users' age and gender in two cities, New York and Chicago
+
+## Let's have a function here to clean our data a little bit:
+Since I will be using the birth year and gender columns, i will make sure they don't have any invaild values.
+This function take a data frame as parameter and remove all null values, and return a clean data frame.
+
+```{r}
+clean_null1 = function(dataFrame){
+  new_df <- dataFrame %>% 
+    filter(!is.na(Birth.Year), !is.na(Gender)) %>%
+    filter(!is.infinite(Birth.Year), !is.infinite(Gender)) %>%
+    filter(!is.nan(Birth.Year), !is.nan(Gender)) %>%
+    filter(!is.null(Birth.Year), !is.null(Gender)) %>%
+    filter(!Birth.Year == "", !Gender == "")
+  
+  # Also, this function will creata a new columns for storing the brith year group values, 
+  # Use year from 1950 to 2005, group user birth year in each 5 years. 
+  # Giving label for the year group,
+  # use the cut function to cut birth year    
+  
+  breaks <- seq((1950), (2005) + 5,5)
+  labels <- paste0(breaks[-length(breaks)] %% 100, "-", (breaks[-1] - 1) %% 100)
+  # Create a new column for the birth year groups with custom labels
+  new_df$Birth.Year.Group <- cut(new_df$Birth.Year, breaks = breaks, labels = labels)    
+  return (new_df)
+}
+```
+
+## Function to generate the graph: this function take a data frame as parameter and display the graph that created.In this graph, each bar contians both male and female, 
+
+```{r}
+generate_plot1 = function(dataFrame){
+  plot <- ggplot(data = na.omit(dataFrame), aes(x = as.factor(Birth.Year.Group))) +
+    geom_bar(aes(fill = Gender), stat = "count", width = 0.5) + 
+    labs(title = 'Bikeshare users distribution by Gender and Birth Year',
+         x = 'Birth Year',
+         y = 'Count',
+         fill = 'Gender')
+  print(plot)
+}
+```
+
+## Call functions to generate the plots
+
+```{r}
+ny_filtered1 = clean_null1(ny)
+generate_plot1(ny_filtered1)
+```
+
+```{r}
+chi_filtered1 = clean_null1(chi)
+generate_plot1(chi_filtered1)
+```
+
+## Question 2
+## From our first question, we already know which age group our users mainly come from. However, which age group has the highest subscription rate? From a business point of view, in each city, which age group has the most potential customers?
+
+## Let's have a function here to clean our data a little bit:
+Since I will be using the birth year and user type columns, i will make sure they don't have any invaild values.
+This function take a data frame as parameter and remove all null values, and return a clean data frame.
+
+
+```{r}
+clean_null2 = function(dataFrame){
+  new_df <- dataFrame %>% 
+    filter(!is.na(Birth.Year), !is.na(User.Type)) %>%
+    filter(!is.infinite(Birth.Year), !is.infinite(User.Type)) %>%
+    filter(!is.nan(Birth.Year), !is.nan(User.Type)) %>%
+    filter(!is.null(Birth.Year), !is.null(User.Type)) %>%
+    filter(!Birth.Year == "", !User.Type == "")
+    
+# Also, this function will creata a new columns for storing the brith year group values, 
+# Use year from 1950 to 2005, group user birth year in each 5 years. 
+# Giving label for the year group,
+# use the cut function to cut birth year
+       
+  breaks <- seq((1950), (2005) + 5,5)
+  labels <- paste0(breaks[-length(breaks)] %% 100, "-", (breaks[-1] - 1) %% 100)
+  # Create a new column for the birth year groups with custom labels
+  new_df$Birth.Year.Group <- cut(new_df$Birth.Year, breaks = breaks, labels = labels)
+  return (new_df)
+}
+```
+
+## Function to generate the graph: this function take a data frame as parameter and display the graph that created.
+
+```{r}
+generate_plot2 = function(dataFrame){
+  plot <- ggplot(data = na.omit(dataFrame), aes(x = as.factor(Birth.Year.Group))) +
+    geom_bar(aes(fill = User.Type), stat = "count", width = 0.5) + 
+    labs(title = 'Bikeshare users type (Customer/Subscriber) distribution in birth year',
+         x = 'User Type',
+         y = 'Count',
+         fill = 'User Type')
+  print(plot)
+}
+```
+
+## Call the above 2 function for filter and generate plots
+
+```{r}
+# Call the above 2 functions for cleaning and generate the graph.
+ny_filtered2 = clean_null2(ny)
+generate_plot2(ny_filtered2)
+```
+```{r}
+chi_filtered2 = clean_null2(chi)
+generate_plot2(chi_filtered2)
+```
+## Question 3
+## Your question 3 goes here. In each city, what are the top 10 routes with the longest biking time?
+
+## Let's have a function to do everything for us, this function take a data frame as a parameter
+
+```{r}
+generate_plot3 = function(dataFrame, title) {
+    
+    # first, let's have a column that combines the start and end station, which we call route
+    dataFrame$Travel.Info <- paste(dataFrame$Start.Station, dataFrame$End.Station, sep = " to ")
+    
+    # use the table library to calculate the total time of each route and store them in a list
+    TotalDuration.Info <- table(dataFrame$Travel.Info)
+    
+    # sort this list by its values
+    TotalDuration.Info <- sort(TotalDuration.Info, decreasing = TRUE)
+    
+    # get the first 10 items from the list, which we will use for our plot
+    top_10_route <- c(TotalDuration.Info[1:10])  # convert seconds to minutes
+    
+    par(mar = c(5, 18, 4, 8)) # adjust the margins to better display the route name and duration
+    xlim <- c(0, max(top_10_route) * 1.2) # set the x-axis limits
+    
+    # plot the bars horizontally
+    bp <- barplot(top_10_route, horiz = TRUE, col = "skyblue", las = 1, xlim = xlim,cex.names = 0.6)
+    
+    # add labels for better indication
+    text(x = top_10_route, y = bp, labels = round(top_10_route, 2), pos = 4, col = "black", cex = 0.8)
+    title(main = title,line = 1.5)
+   
+    # Add extra x-label using title ()
+    title(x = "The number of times each route was used", line = 2)
+}
+
+```
+
+## Call above function to generate plot
+
+```{r}
+generate_plot3(ny, title = "Top 10 Routes in New York")
+```
+
+```{r}
+generate_plot3(wash, title = "Top 10 Routes in Washington")
+```
+
+```{r}
+generate_plot3(chi, title = "Top 10 Routes in Chicago")
+```
+
